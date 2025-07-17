@@ -1,0 +1,35 @@
+{
+  "name": "renderbit/laravel-db-url-replacer",
+  "description": "Artisan command to search and replace URLs in the database across text columns",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Soham Banerjee",
+      "email": "soham@renderbit.com"
+    }
+  ],
+  "require": {
+    "php": "^8.0",
+    "illuminate/support": "^9.0|^10.0|^11.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Renderbit\\DbUrlReplacer\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Renderbit\\DbUrlReplacer\\Tests\\": "tests"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Renderbit\\DbUrlReplacer\\DbUrlReplacerServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
