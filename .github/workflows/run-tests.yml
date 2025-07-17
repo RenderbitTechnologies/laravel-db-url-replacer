@@ -53,7 +53,9 @@ jobs:
           composer update --prefer-dist --no-interaction
 
       - name: Create SQLite DB
-        run: touch database/database.sqlite
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
 
       - name: Run tests
         run: vendor/bin/phpunit --testdox
