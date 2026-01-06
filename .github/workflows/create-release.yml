@@ -1,0 +1,109 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      manual_tag:
+        description: 'Manual tag (vX.Y.Z)'
+        required: false
+        type: string
+      increment_level:
+        description: 'Increment level (if no manual tag)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Tests Passed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Checking test status for commit $GITHUB_SHA..."
+          STATUS=$(gh run list --workflow run-tests.yml --commit $GITHUB_SHA --json conclusion --limit 1 --jq '.[0].conclusion')
+          echo "Status: $STATUS"
+          if [ "$STATUS" != "success" ]; then
+            echo "Error: Tests have not passed for this commit (Status: $STATUS). Please ensure 'Run Tests' workflow completes successfully."
+            exit 1
+          fi
+
+      - name: Calculate Tag
+        id: tag_calc
+        env:
+          MANUAL_TAG: ${{ inputs.manual_tag }}
+          INCREMENT: ${{ inputs.increment_level }}
+        run: |
+          # Function to check regex
+          validate_tag() {
+            if [[ "$1" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              return 0
+            else
+              return 1
+            fi
+          }
+
+          if [ -n "$MANUAL_TAG" ]; then
+            if validate_tag "$MANUAL_TAG"; then
+              echo "Using manual tag: $MANUAL_TAG"
+              NEW_TAG="$MANUAL_TAG"
+            else
+              echo "Error: Manual tag '$MANUAL_TAG' does not match format vX.Y.Z"
+              exit 1
+            fi
+          else
+            # Get latest tag
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+            if [ -z "$LAST_TAG" ]; then
+              echo "No previous tags found. Defaulting to v1.0.0"
+              NEW_TAG="v1.0.0"
+            else
+              echo "Latest tag: $LAST_TAG"
+              # Remove 'v' prefix
+              VERSION=${LAST_TAG#v}
+              IFS='.' read -r major minor patch <<< "$VERSION"
+
+              if [ "$INCREMENT" == "minor" ]; then
+                minor=$((minor + 1))
+                patch=0
+              else
+                patch=$((patch + 1))
+              fi
+
+              NEW_TAG="v$major.$minor.$patch"
+              echo "Calculated new tag: $NEW_TAG"
+            fi
+          fi
+
+          # Check if tag already exists
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "Error: Tag $NEW_TAG already exists!"
+            exit 1
+          fi
+
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_TAG="${{ steps.tag_calc.outputs.tag }}"
+          echo "Creating release for tag: $NEW_TAG"
+
+          gh release create "$NEW_TAG" \
+            --target main \
+            --generate-notes \
+            --title "$NEW_TAG"
