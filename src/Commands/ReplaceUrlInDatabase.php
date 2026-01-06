@@ -25,8 +25,6 @@ class ReplaceUrlInDatabase extends Command
         $columnsFilter = $this->option('columns') ? explode(',', $this->option('columns')) : [];
         $isDryRun = $this->option('dry-run');
 
-        $dbName = DB::getDatabaseName();
-
         if (!filter_var($oldUrl, FILTER_VALIDATE_URL)) {
             $this->error("Invalid old URL: $oldUrl");
             return Command::FAILURE;
@@ -37,7 +35,15 @@ class ReplaceUrlInDatabase extends Command
             return Command::FAILURE;
         }
 
-        $allTables = DB::connection()->getDoctrineSchemaManager()->listTableNames();
+        $schema = DB::connection()->getSchemaBuilder();
+        $useNativeSchema = method_exists($schema, 'getTables');
+
+        if ($useNativeSchema) {
+            $allTables = collect($schema->getTables())->pluck('name')->all();
+        } else {
+            $allTables = DB::connection()->getDoctrineSchemaManager()->listTableNames();
+        }
+
         if ($tablesFilter) {
             $invalidTables = array_diff($tablesFilter, $allTables);
             if (!empty($invalidTables)) {
@@ -46,42 +52,62 @@ class ReplaceUrlInDatabase extends Command
             }
         }
 
-        $columns = DB::table('information_schema.columns')
-            ->where('table_schema', $dbName)
-            ->whereIn('data_type', ['varchar', 'text', 'longtext', 'mediumtext', 'char'])
-            ->get(['table_name', 'column_name']);
+        $textTypes = ['varchar', 'text', 'longtext', 'mediumtext', 'char', 'string'];
+        $columnsToProcess = [];
+        $columnFoundInFilter = false;
 
-        if ($columnsFilter) {
-            $columnFound = false;
-            foreach ($columns as $col) {
-                if (in_array($col->column_name, $columnsFilter)) {
-                    $columnFound = true;
-                    break;
-                }
-            }
-            if (!$columnFound) {
-                $this->error('None of the specified columns were found in any table.');
-                return Command::FAILURE;
-            }
-        }
-
-        $results = [];
-
-        foreach ($columns as $col) {
-            $table = $col->table_name;
-            $column = $col->column_name;
-
+        foreach ($allTables as $table) {
+            // Skip tables if filter applies and table is not in filter
             if ($tablesFilter && !in_array($table, $tablesFilter)) {
                 continue;
             }
 
-            if ($columnsFilter && !in_array($column, $columnsFilter)) {
-                continue;
+            $columns = [];
+            if ($useNativeSchema && method_exists($schema, 'getColumns')) {
+                // Laravel 11+ way
+                $cols = $schema->getColumns($table);
+                foreach ($cols as $col) {
+                    $typeName = strtolower($col['type_name']);
+                    // SQLite returns 'varchar', MySQL 'varchar', Postgres 'character varying'
+                    // We need a loose check or rely on mapping
+                    if ($this->isTextType($typeName)) {
+                        $columns[] = $col['name'];
+                    }
+                }
+            } else {
+                // DBAL way
+                $cols = DB::connection()->getDoctrineSchemaManager()->listTableColumns($table);
+                foreach ($cols as $col) {
+                    // DBAL returns Type object
+                    $typeName = $col->getType()->getName(); // 'string', 'text', etc.
+                     if ($this->isTextType($typeName)) {
+                        $columns[] = $col->getName();
+                    }
+                }
             }
 
-            if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) {
-                continue;
+            foreach ($columns as $column) {
+                 if ($columnsFilter) {
+                    if (in_array($column, $columnsFilter)) {
+                        $columnFoundInFilter = true;
+                        $columnsToProcess[] = ['table' => $table, 'column' => $column];
+                    }
+                } else {
+                    $columnsToProcess[] = ['table' => $table, 'column' => $column];
+                }
             }
+        }
+
+        if ($columnsFilter && !$columnFoundInFilter) {
+             $this->error('None of the specified columns were found in any table.');
+             return Command::FAILURE;
+        }
+
+        $results = [];
+
+        foreach ($columnsToProcess as $item) {
+            $table = $item['table'];
+            $column = $item['column'];
 
             try {
                 $count = DB::table($table)
@@ -124,5 +150,11 @@ class ReplaceUrlInDatabase extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    protected function isTextType($type)
+    {
+        $textTypes = ['varchar', 'text', 'longtext', 'mediumtext', 'char', 'string', 'character varying'];
+        return in_array(strtolower($type), $textTypes);
     }
 }
