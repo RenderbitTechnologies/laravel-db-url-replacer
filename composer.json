@@ -17,6 +17,9 @@
   "require-dev": {
     "orchestra/testbench": "^6.0|^7.0|^8.0|^9.0|^10.0"
   },
+  "conflict": {
+    "phpunit/phpunit": "<8.5.21"
+  },
   "autoload": {
     "psr-4": {
       "Renderbit\\DbUrlReplacer\\": "src/"
