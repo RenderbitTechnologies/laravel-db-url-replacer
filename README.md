@@ -1,6 +1,6 @@
 # Laravel DB URL Replacer
 
-[![Tests](https://github.com/renderbit/laravel-db-url-replacer/actions/workflows/run-tests.yml/badge.svg)](https://github.com/renderbit/laravel-db-url-replacer/actions/workflows/run-tests.yml)
+[![Tests](https://github.com/RenderbitTechnologies/laravel-db-url-replacer/actions/workflows/run-tests.yml/badge.svg)](https://github.com/RenderbitTechnologies/laravel-db-url-replacer/actions/workflows/run-tests.yml)
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/renderbit/laravel-db-url-replacer.svg?style=flat-square)](https://packagist.org/packages/renderbit/laravel-db-url-replacer)
 [![PHP Version](https://img.shields.io/packagist/php-v/renderbit/laravel-db-url-replacer.svg?style=flat-square)](https://packagist.org/packages/renderbit/laravel-db-url-replacer)
 [![License](https://img.shields.io/packagist/l/renderbit/laravel-db-url-replacer.svg?style=flat-square)](https://packagist.org/packages/renderbit/laravel-db-url-replacer)
