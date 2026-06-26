@@ -1,3 +1,5 @@
 vendor/
 database/
 .phpunit.result.cache
+
+composer.lock
