@@ -7,11 +7,11 @@
 
 A Laravel Artisan command to search and replace URLs across your database tables. Supports:
 
-- Targeting all `TEXT` columns in all tables by default
+- Targeting all text-type columns (`varchar`, `text`, `longtext`, `mediumtext`, `char`, `string`) in all tables by default
 - Limiting to specific tables or columns using options
-- Validates URLs, table and column existence
-- Dry run mode to preview changes
-- Summary output with affected rows per table
+- Validates both old and new URLs, plus table and column existence
+- Dry run mode to preview changes without modifying data
+- Summary output with affected rows per table/column
 
 ## Installation
 
@@ -19,27 +19,53 @@ A Laravel Artisan command to search and replace URLs across your database tables
 composer require --dev renderbit/laravel-db-url-replacer
 ```
 
+Package auto-discovery is supported — no manual provider registration needed.
+
+### Compatibility
+
+| PHP    | Laravel |
+|--------|---------|
+| 8.0–8.4 | 8–12  |
+
 ## Usage
 
 ```bash
 php artisan db:replace-url "http://old.url" "https://new.url"
 ```
 
-### Options:
-- `--tables=table1,table2`	Limit to specific tables
-- `--columns=col1,col2`	Limit to specific columns
-- `--dry-run`			Only show potential changes
+### Options
 
-## Running Tests
+| Option | Description |
+|--------|-------------|
+| `--tables=table1,table2` | Comma-separated list of tables to limit the replacement to |
+| `--columns=col1,col2` | Comma-separated list of columns to limit the replacement to |
+| `--dry-run` | Preview what would be changed without modifying any data |
 
-To run the test suite locally:
+### Examples
+
+```bash
+# Replace across all text columns in all tables
+php artisan db:replace-url "http://old.example.com" "https://new.example.com"
+
+# Target only specific tables
+php artisan db:replace-url "http://old.example.com" "https://new.example.com" --tables=posts,comments
+
+# Target only specific columns
+php artisan db:replace-url "http://old.example.com" "https://new.example.com" --columns=content,excerpt
+
+# Preview changes without writing
+php artisan db:replace-url "http://old.example.com" "https://new.example.com" --dry-run
+```
+
+## Testing
 
 ```bash
 composer install
 vendor/bin/phpunit
 ```
 
-Tests are also automatically run via GitHub Actions on push and pull requests.
+Tests are run automatically via GitHub Actions on push and pull requests, across the full PHP/Laravel compatibility matrix.
 
 ## License
+
 MIT
