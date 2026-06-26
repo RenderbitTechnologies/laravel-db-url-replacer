@@ -52,7 +52,6 @@ class ReplaceUrlInDatabase extends Command
             }
         }
 
-        $textTypes = ['varchar', 'text', 'longtext', 'mediumtext', 'char', 'string'];
         $columnsToProcess = [];
         $columnFoundInFilter = false;
 
@@ -118,7 +117,7 @@ class ReplaceUrlInDatabase extends Command
                     $replaced = $isDryRun ? 0 : DB::table($table)
                         ->where($column, 'LIKE', "%$oldUrl%")
                         ->update([
-                            $column => DB::raw("REPLACE(`$column`, '$oldUrl', '$newUrl')")
+                            $column => DB::raw("REPLACE($column, '" . addslashes($oldUrl) . "', '" . addslashes($newUrl) . "')")
                         ]);
 
                     $results[] = [
